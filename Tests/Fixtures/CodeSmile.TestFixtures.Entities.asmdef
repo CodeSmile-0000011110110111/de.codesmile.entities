@@ -3,8 +3,10 @@
     "rootNamespace": "CodeSmile.TestFixtures",
     "references": [
         "UnityEngine.TestRunner",
+        "Unity.Burst",
         "Unity.Collections",
         "Unity.Entities",
+        "Unity.Mathematics",
         "Unity.PerformanceTesting"
     ],
     "includePlatforms": [],

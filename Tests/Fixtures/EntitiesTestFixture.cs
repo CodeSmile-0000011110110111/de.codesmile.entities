@@ -4,6 +4,7 @@
 using NUnit.Framework;
 using System;
 using System.Reflection;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs.LowLevel.Unsafe;
 using Unity.PerformanceTesting;
@@ -22,16 +23,16 @@ namespace CodeSmile.TestFixtures
 		private PlayerLoopSystem m_PreviousPlayerLoop;
 		private Boolean m_WasJobsDebuggerEnabled;
 
-		public World World => m_World ?? CreateDefaultWorld();
-		public World EmptyWorld => m_World ?? CreateEmptyWorld();
+		protected World World => m_World ?? CreateDefaultWorld();
+		protected World EmptyWorld => m_World ?? CreateEmptyWorld();
 
-		public EntityManager EM => m_EntityManager;
+		protected EntityManager EM => m_EntityManager;
 
 		[SetUp] public void Setup() {}
 
 		[TearDown] public void TearDown() => DestroyWorld();
 
-		public void MeasureWorldUpdate(Int32 iterations = 1) => Measure.Method(() =>
+		protected void MeasureWorldUpdate(Int32 iterations = 1) => Measure.Method(() =>
 			{
 				World.Update();
 				m_EntityManager.CompleteAllTrackedJobs();
@@ -41,30 +42,47 @@ namespace CodeSmile.TestFixtures
 			.IterationsPerMeasurement(Mathf.Max(1, iterations))
 			.Run();
 
-		public World CreateEmptyWorld() => CreateWorld(true);
-		public World CreateDefaultWorld() => CreateWorld(false);
+		protected World CreateEmptyWorld(params Type[] systems) => CreateWorld(true, systems);
+		protected World CreateDefaultWorld(params Type[] systems) => CreateWorld(false, systems);
 
-		private World CreateWorld(Boolean emptyWorld)
+		private World CreateWorld(Boolean emptyWorld, Type[] systems)
 		{
 			if (m_PreviousWorld != null)
 				throw new InvalidOperationException("CreateWorld called more than once");
 
 			SetDefaultPlayerLoop();
-
-			m_PreviousWorld = World.DefaultGameObjectInjectionWorld;
-			m_World = World.DefaultGameObjectInjectionWorld = emptyWorld
-				? new World("Test World: Empty")
-				: DefaultWorldInitialization.Initialize("Test World: Default");
-			m_World.UpdateAllocatorEnableBlockFree = true;
-
-			m_EntityManager = m_World.EntityManager;
-			m_DebugEntityManager = new EntityManager.EntityManagerDebug(m_EntityManager);
-
+			InitWorld(emptyWorld);
+			InitSystems(systems);
+			SetEntityManagerReferences();
 			ClearSystemIds();
 			EnableJobsDebugger();
 			EntitiesJournaling.Clear();
 
 			return m_World;
+		}
+
+		private void InitSystems(Type[] systems)
+		{
+			if (systems == null)
+				return;
+
+			foreach (var system in systems)
+				m_World.CreateSystem(system);
+		}
+
+		private void InitWorld(Boolean emptyWorld)
+		{
+			m_PreviousWorld = World.DefaultGameObjectInjectionWorld;
+			m_World = World.DefaultGameObjectInjectionWorld = emptyWorld
+				? new World("Test World: Empty")
+				: DefaultWorldInitialization.Initialize("Test World: Default");
+			m_World.UpdateAllocatorEnableBlockFree = true;
+		}
+
+		private void SetEntityManagerReferences()
+		{
+			m_EntityManager = m_World.EntityManager;
+			m_DebugEntityManager = new EntityManager.EntityManagerDebug(m_EntityManager);
 		}
 
 		private void EnableJobsDebugger()
@@ -122,5 +140,16 @@ namespace CodeSmile.TestFixtures
 		private void ClearSystemIds() => typeof(JobsUtility)
 			.GetMethod("ClearSystemIds", BindingFlags.Static | BindingFlags.NonPublic)
 			.Invoke(null, null);
+
+		protected void CreateEntitiesWithComponents(Int32 entitiesCount, params ComponentType[] components)
+		{
+			var archetype = EM.CreateArchetype(components);
+
+			var ecb = new EntityCommandBuffer(Allocator.Temp);
+			for (var i = 0; i < entitiesCount; i++)
+				ecb.CreateEntity(archetype);
+
+			ecb.Playback(EM);
+		}
 	}
 }

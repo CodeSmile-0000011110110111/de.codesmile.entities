@@ -9,7 +9,8 @@
         "Unity.Entities",
         "Unity.Mathematics",
         "Unity.PerformanceTesting",
-        "CodeSmile.TestFixtures.Entities"
+        "CodeSmile.TestFixtures.Entities",
+        "CodeSmile.Tests.Entities"
     ],
     "includePlatforms": [
         "Editor"
