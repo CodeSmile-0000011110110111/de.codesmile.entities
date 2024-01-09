@@ -1,0 +1,22 @@
+{
+  "name": "de.codesmile.entities",
+  "displayName": "CodeSmile Entities",
+  "description": "Extensions and utilities for Unity Entities (ECS).",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "unityRelease": "0f1",
+  "author": {
+    "name": "Steffen Itterheim aka 'CodeSmile' (Unity MVP, Self-Employed)",
+    "email": "steffen@steffenitterheim.de",
+    "url": "https://github.com/CodeSmile-0000011110110111/de.codesmile.entities"
+  },
+  "changelogUrl": "https://github.com/CodeSmile-0000011110110111/de.codesmile.entities/tree/main/CHANGELOG.md",
+  "documentationUrl": "https://github.com/CodeSmile-0000011110110111/de.codesmile.entities/tree/main/README.md",
+  "licensesUrl": "https://github.com/CodeSmile-0000011110110111/de.codesmile.entities/tree/main/LICENSE",
+  "dependencies": {
+    "com.unity.test-framework": "1.4.1",
+    "com.unity.test-framework.performance": "3.0.3",
+    "com.unity.entities": "1.0.16"
+ },
+  "relatedPackages": {}
+}
