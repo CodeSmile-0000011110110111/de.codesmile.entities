@@ -5,5 +5,6 @@ using CodeSmile.Tests;
 
 namespace CodeSmileEditor.Tests
 {
-	public class EntitiesEditorMeasureTests : EntitiesMeasureTests {}
+	public class MeasureEditorBaselines : MeasureBaselines {}
+	public class MeasureEditorReadWriteComponentData : MeasureReadWriteComponentData {}
 }

@@ -3,7 +3,9 @@
 
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Text;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs.LowLevel.Unsafe;
@@ -32,6 +34,28 @@ namespace CodeSmile.TestFixtures
 
 		[TearDown] public void TearDown() => DestroyWorld();
 
+		protected String LogSystems()
+		{
+			var systems = World.Systems;
+			var sb = new StringBuilder($"Component Systems: {systems.Count}\n");
+
+			var groups = new List<ComponentSystemGroup>();
+			foreach (var system in systems)
+			{
+				if (system is ComponentSystemGroup group)
+					groups.Add(group);
+			}
+
+			foreach (var group in groups)
+			{
+				sb.AppendLine(group.GetType().Name);
+				foreach (var system in group.ManagedSystems)
+					sb.AppendLine($"    {system}");
+			}
+
+			return sb.ToString();
+		}
+
 		protected void MeasureWorldUpdate(Int32 iterations = 1) => Measure.Method(() =>
 			{
 				World.Update();
@@ -47,8 +71,8 @@ namespace CodeSmile.TestFixtures
 
 		private World CreateWorld(Boolean emptyWorld, Type[] systems)
 		{
-			if (m_PreviousWorld != null)
-				throw new InvalidOperationException("CreateWorld called more than once");
+			if (m_World != null)
+				throw new InvalidOperationException("CreateWorld: World already created");
 
 			SetDefaultPlayerLoop();
 			InitWorld(emptyWorld);
@@ -61,13 +85,27 @@ namespace CodeSmile.TestFixtures
 			return m_World;
 		}
 
+		private void DestroyWorld()
+		{
+			if (m_World != null && m_World.IsCreated)
+			{
+				DestroyAllSystems();
+				m_DebugEntityManager.CheckInternalConsistency();
+				RestorePreviousWorld();
+			}
+
+			ClearSystemIds();
+			RestorePlayerLoop();
+			RestoreJobsDebugger();
+		}
+
 		private void InitSystems(Type[] systems)
 		{
 			if (systems == null)
 				return;
 
 			foreach (var system in systems)
-				m_World.CreateSystem(system);
+				m_World.GetOrCreateSystem(system);
 		}
 
 		private void InitWorld(Boolean emptyWorld)
@@ -95,20 +133,6 @@ namespace CodeSmile.TestFixtures
 
 		private void RestoreJobsDebugger() => JobsUtility.JobDebuggerEnabled = m_WasJobsDebuggerEnabled;
 
-		protected void DestroyWorld()
-		{
-			if (m_World != null && m_World.IsCreated)
-			{
-				DestroyAllSystems();
-				m_DebugEntityManager.CheckInternalConsistency();
-				RestorePreviousWorld();
-			}
-
-			ClearSystemIds();
-			RestorePlayerLoop();
-			RestoreJobsDebugger();
-		}
-
 		private void SetDefaultPlayerLoop()
 		{
 			// unit tests preserve the current player loop to restore later, and start from a blank slate.
@@ -131,8 +155,7 @@ namespace CodeSmile.TestFixtures
 			m_World.Dispose();
 			World.DefaultGameObjectInjectionWorld = m_PreviousWorld;
 
-			m_World = null;
-			m_PreviousWorld = null;
+			m_World = m_PreviousWorld = null;
 			m_EntityManager = default;
 			m_DebugEntityManager = default;
 		}
