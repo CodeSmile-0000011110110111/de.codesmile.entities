@@ -4,20 +4,24 @@
 using CodeSmile.TestFixtures;
 using NUnit.Framework;
 using System;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.PerformanceTesting;
+using UnityEngine;
 
 namespace CodeSmile.Tests
 {
 	public class MeasureReadWriteComponentData : EntitiesTestFixture
 	{
+		private const Int32 TestValue = 0xff;
+
 		[TestCase(100), TestCase(1000), TestCase(10000), TestCase(100000), TestCase(1000000), Performance]
 		public void Measure_ReadWriteComponentData_SystemBase(Int32 entitiesCount)
 		{
-			CreateReadWriteComponentEntities(entitiesCount, typeof(ComponentReadWriteSystemBaseSystem.TagComponent));
+			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteSystemBaseSystem), typeof(ComponentReadWriteSystemBaseSystem.TagComponent));
 			MeasureWorldUpdate();
 			AssertReadWriteComponentTest();
 		}
@@ -25,7 +29,7 @@ namespace CodeSmile.Tests
 		[TestCase(100), TestCase(1000), TestCase(10000), TestCase(100000), TestCase(1000000), Performance]
 		public void Measure_ReadWriteComponentData_Job(Int32 entitiesCount)
 		{
-			CreateReadWriteComponentEntities(entitiesCount, typeof(ComponentReadWriteJobSystem.TagComponent));
+			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteJobSystem), typeof(ComponentReadWriteJobSystem.TagComponent));
 			MeasureWorldUpdate();
 			AssertReadWriteComponentTest();
 		}
@@ -33,7 +37,7 @@ namespace CodeSmile.Tests
 		[TestCase(100), TestCase(1000), TestCase(10000), TestCase(100000), TestCase(1000000), Performance]
 		public void Measure_ReadWriteComponentData_BurstedJob(Int32 entitiesCount)
 		{
-			CreateReadWriteComponentEntities(entitiesCount, typeof(ComponentReadWriteBurstedJobSystem.TagComponent));
+			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteBurstedJobSystem), typeof(ComponentReadWriteBurstedJobSystem.TagComponent));
 			MeasureWorldUpdate();
 			AssertReadWriteComponentTest();
 		}
@@ -41,7 +45,7 @@ namespace CodeSmile.Tests
 		[TestCase(100), TestCase(1000), TestCase(10000), TestCase(100000), TestCase(1000000), Performance]
 		public void Measure_ReadWriteComponentData_ParallelJob(Int32 entitiesCount)
 		{
-			CreateReadWriteComponentEntities(entitiesCount, typeof(ComponentReadWriteParallelJobSystem.TagComponent));
+			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteParallelJobSystem), typeof(ComponentReadWriteParallelJobSystem.TagComponent));
 			MeasureWorldUpdate();
 			AssertReadWriteComponentTest();
 		}
@@ -49,7 +53,7 @@ namespace CodeSmile.Tests
 		[TestCase(100), TestCase(1000), TestCase(10000), TestCase(100000), TestCase(1000000), Performance]
 		public void Measure_ReadWriteComponentData_BurstedParallelJob(Int32 entitiesCount)
 		{
-			CreateReadWriteComponentEntities(entitiesCount,
+			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteBurstedParallelJobSystem),
 				typeof(ComponentReadWriteBurstedParallelJobSystem.TagComponent));
 			MeasureWorldUpdate();
 			AssertReadWriteComponentTest();
@@ -58,24 +62,25 @@ namespace CodeSmile.Tests
 		[TestCase(100), TestCase(1000), TestCase(10000), TestCase(100000), TestCase(1000000), Performance]
 		public void Measure_ReadWriteComponentData_BurstedParallelCallFuncJob(Int32 entitiesCount)
 		{
-			CreateReadWriteComponentEntities(entitiesCount,
+			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteBurstedParallelCallFuncJobSystem),
 				typeof(ComponentReadWriteBurstedParallelCallFuncJobSystem.TagComponent));
 			MeasureWorldUpdate();
 			AssertReadWriteComponentTest();
 		}
 
 		[TestCase(100), TestCase(1000), TestCase(10000), TestCase(100000), TestCase(1000000), Performance]
-		public void Measure_ReadWriteComponentData_EntityManagerSetComponentData(Int32 entitiesCount)
+		public void Measure_ReadWriteComponentData_EntityManagerGetSetComponentData(Int32 entitiesCount)
 		{
-			CreateReadWriteComponentEntities(entitiesCount, typeof(EntityManagerSetDataTagComponent));
+			CreateReadWriteComponentTestEntities(entitiesCount, null, typeof(EntityManagerSetDataTagComponent));
 
 			Measure.Method(() =>
 				{
 					foreach (var entity in EM.GetAllEntities())
 					{
+						var value = EM.GetComponentData<IntComponent>(entity).Value;
 						EM.SetComponentData(entity, new Int4x4Component
 						{
-							Value = new int4x4(new int4(0xff), new int4(0xff), new int4(0xff), new int4(0xff)),
+							Value = new int4x4(new int4(value), new int4(value), new int4(value), new int4(value)),
 						});
 					}
 					EM.CompleteAllTrackedJobs();
@@ -88,12 +93,12 @@ namespace CodeSmile.Tests
 			AssertReadWriteComponentTest();
 		}
 
-		private void CreateReadWriteComponentEntities(Int32 entitiesCount, Type tagComponent)
+		private void CreateReadWriteComponentTestEntities(Int32 entitiesCount, Type system, params ComponentType[] components)
 		{
-			CreateDefaultWorld();
-			CreateEntitiesWithComponents(entitiesCount, typeof(IntComponent), typeof(Int4x4Component), tagComponent);
-			foreach (var entity in EM.GetAllEntities())
-				EM.SetComponentData(entity, new IntComponent { Value = 0xff });
+			CreateWorld(system);
+			components = components.Append(typeof(IntComponent)).Append(typeof(Int4x4Component)).ToArray();
+			CreateEntitiesWithComponents(entitiesCount, components.ToArray());
+			SetEntitiesComponentData(new IntComponent { Value = TestValue });
 		}
 
 		private void AssertReadWriteComponentTest()
@@ -102,12 +107,13 @@ namespace CodeSmile.Tests
 			{
 				if (EM.HasComponent<Int4x4Component>(entity))
 				{
-					// just checking one
 					var result = EM.GetComponentData<Int4x4Component>(entity);
-					Assert.AreEqual(0xff, result.Value.c0.x);
-					Assert.AreEqual(0xff, result.Value.c1.y);
-					Assert.AreEqual(0xff, result.Value.c2.z);
-					Assert.AreEqual(0xff, result.Value.c3.w);
+					Assert.AreEqual(TestValue, result.Value.c0.x);
+					Assert.AreEqual(TestValue, result.Value.c1.y);
+					Assert.AreEqual(TestValue, result.Value.c2.z);
+					Assert.AreEqual(TestValue, result.Value.c3.w);
+
+					// just checking one
 					break;
 				}
 			}
@@ -153,7 +159,7 @@ namespace CodeSmile.Tests
 		}
 	}
 
-	[UpdateInGroup(typeof(SimulationSystemGroup))]
+	[DisableAutoCreation]
 	internal partial struct ComponentReadWriteJobSystem : ISystem
 	{
 		[BurstCompile(CompileSynchronously = true)]
@@ -165,7 +171,7 @@ namespace CodeSmile.Tests
 		public struct TagComponent : IComponentData {}
 	}
 
-	[UpdateInGroup(typeof(SimulationSystemGroup))]
+	[DisableAutoCreation]
 	internal partial struct ComponentReadWriteParallelJobSystem : ISystem
 	{
 		[BurstCompile(CompileSynchronously = true)]
@@ -177,7 +183,7 @@ namespace CodeSmile.Tests
 		public struct TagComponent : IComponentData {}
 	}
 
-	[BurstCompile(CompileSynchronously = true), UpdateInGroup(typeof(SimulationSystemGroup))]
+	[BurstCompile(CompileSynchronously = true), DisableAutoCreation]
 	internal partial struct ComponentReadWriteBurstedJobSystem : ISystem
 	{
 		[BurstCompile(CompileSynchronously = true)]
@@ -189,7 +195,7 @@ namespace CodeSmile.Tests
 		public struct TagComponent : IComponentData {}
 	}
 
-	[BurstCompile(CompileSynchronously = true), UpdateInGroup(typeof(SimulationSystemGroup))]
+	[BurstCompile(CompileSynchronously = true), DisableAutoCreation]
 	internal partial struct ComponentReadWriteBurstedParallelJobSystem : ISystem
 	{
 		[BurstCompile(CompileSynchronously = true)]
@@ -201,7 +207,7 @@ namespace CodeSmile.Tests
 		public struct TagComponent : IComponentData {}
 	}
 
-	[BurstCompile(CompileSynchronously = true), UpdateInGroup(typeof(SimulationSystemGroup))]
+	[BurstCompile(CompileSynchronously = true), DisableAutoCreation]
 	internal partial struct ComponentReadWriteBurstedParallelCallFuncJobSystem : ISystem
 	{
 		public struct TagComponent : IComponentData {}
@@ -213,7 +219,7 @@ namespace CodeSmile.Tests
 		public void OnUpdate(ref SystemState state) => new ComponentReadWriteBurstedCallFuncJob().ScheduleParallel();
 	}
 
-	[UpdateInGroup(typeof(SimulationSystemGroup))]
+	[DisableAutoCreation]
 	public partial class ComponentReadWriteSystemBaseSystem : SystemBase
 	{
 		protected override void OnCreate() => RequireForUpdate<TagComponent>();

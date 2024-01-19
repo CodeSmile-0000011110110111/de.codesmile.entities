@@ -4,6 +4,7 @@
 using CodeSmile.TestFixtures;
 using NUnit.Framework;
 using Unity.Entities;
+using UnityEngine;
 
 namespace CodeSmile.Tests
 {
@@ -11,21 +12,31 @@ namespace CodeSmile.Tests
 	{
 		[Test] public void Fixture_DefaultWorld_UpdateDoesNotThrow() => World.Update();
 
-		[Test] public void Fixture_EmptyWorld_UpdateDoesNotThrow() => EmptyWorld.Update();
-
-		[Test] public void TestFixtureSystem_ManualUpdate_DidUpdateOnce()
+		[Test] public void MockSystem_ManualUpdate_SystemUpdatedOnce()
 		{
 			var handle = World.CreateSystem<MockSystem>();
 			handle.Update(World.Unmanaged);
 
+			Debug.Log(LogSystemsToString());
 			Assert.AreEqual(1, MockSystem.UpdateCount);
 		}
 
-		[Test] public void TestFixtureSystem_WorldUpdate_DidUpdateOnce()
+		[Test] public void MockSystem_WorldUpdate_SystemUpdatedOnce()
 		{
-			World.CreateSystem<MockSystem>();
+			var handle = World.CreateSystem<MockSystem>();
+			World.GetExistingSystemManaged<InitializationSystemGroup>().AddSystemToUpdateList(handle);
 			World.Update();
 
+			Debug.Log(LogSystemsToString());
+			Assert.AreEqual(1, MockSystem.UpdateCount);
+		}
+
+		[Test] public void MockSystem_CreateWorldAndUpdate_SystemUpdatedOnce()
+		{
+			CreateWorld(typeof(MockSystem));
+			World.Update();
+
+			Debug.Log(LogSystemsToString());
 			Assert.AreEqual(1, MockSystem.UpdateCount);
 		}
 	}

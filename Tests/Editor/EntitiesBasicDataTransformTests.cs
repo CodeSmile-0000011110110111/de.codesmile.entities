@@ -5,5 +5,5 @@ using CodeSmile.Tests;
 
 namespace CodeSmileEditor.Tests
 {
-	public class EntitiesTestFixtureEditorTests : EntitiesTestFixtureTests {}
+	public class EntitiesBasicDataTransformEditorTests : EntitiesBasicDataTransformTests {}
 }

@@ -14,16 +14,10 @@ namespace CodeSmile.Tests
 	{
 		[Test, Performance] public void Measure_DefaultWorldUpdate() => MeasureWorldUpdate();
 
-		[Test, Performance] public void Measure_EmptytWorldUpdate()
-		{
-			CreateEmptyWorld();
-			MeasureWorldUpdate();
-		}
-
 		[TestCase(100), TestCase(1000), TestCase(10000), TestCase(100000), Performance]
 		public void Measure_CreateEntities(Int32 entitiesCount)
 		{
-			CreateEmptyWorld();
+			CreateWorld();
 
 			Measure.Method(() =>
 				{
@@ -37,7 +31,7 @@ namespace CodeSmile.Tests
 		[TestCase(100), TestCase(1000), TestCase(10000), TestCase(100000), Performance]
 		public void Measure_CreateEntities_WithCommandBuffer(Int32 entitiesCount)
 		{
-			CreateEmptyWorld();
+			CreateWorld();
 
 			Measure.Method(() =>
 				{
@@ -46,6 +40,7 @@ namespace CodeSmile.Tests
 						ecb.CreateEntity();
 
 					ecb.Playback(EM);
+					ecb.Dispose();
 				})
 				.DynamicMeasurementCount()
 				.Run();

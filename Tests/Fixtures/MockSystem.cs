@@ -2,11 +2,12 @@
 // Refer to included LICENSE file for terms and conditions.
 
 using System;
+using Unity.Burst;
 using Unity.Entities;
 
 namespace CodeSmile.TestFixtures
 {
-	[UpdateInGroup(typeof(SimulationSystemGroup))]
+	[BurstCompile, DisableAutoCreation]
 	public partial struct MockSystem : ISystem, ISystemStartStop
 	{
 		private static Boolean s_DidCreate;

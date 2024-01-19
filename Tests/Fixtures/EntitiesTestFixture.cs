@@ -25,8 +25,7 @@ namespace CodeSmile.TestFixtures
 		private PlayerLoopSystem m_PreviousPlayerLoop;
 		private Boolean m_WasJobsDebuggerEnabled;
 
-		protected World World => m_World ?? CreateDefaultWorld();
-		protected World EmptyWorld => m_World ?? CreateEmptyWorld();
+		protected World World => m_World ?? CreateWorld();
 
 		protected EntityManager EM => m_EntityManager;
 
@@ -34,7 +33,7 @@ namespace CodeSmile.TestFixtures
 
 		[TearDown] public void TearDown() => DestroyWorld();
 
-		protected String LogSystems()
+		protected String LogSystemsToString()
 		{
 			var systems = World.Systems;
 			var sb = new StringBuilder($"Component Systems: {systems.Count}\n");
@@ -66,17 +65,17 @@ namespace CodeSmile.TestFixtures
 			.IterationsPerMeasurement(Mathf.Max(1, iterations))
 			.Run();
 
-		protected World CreateEmptyWorld(params Type[] systems) => CreateWorld(true, systems);
-		protected World CreateDefaultWorld(params Type[] systems) => CreateWorld(false, systems);
+		//protected World CreateEmptyWorld(params Type[] systems) => CreateWorld(true, systems);
+		//protected World CreateDefaultWorld(params Type[] systems) => CreateWorld(false, systems);
 
-		private World CreateWorld(Boolean emptyWorld, Type[] systems)
+		protected World CreateWorld(params Type[] simulationSystems)
 		{
 			if (m_World != null)
 				throw new InvalidOperationException("CreateWorld: World already created");
 
 			SetDefaultPlayerLoop();
-			InitWorld(emptyWorld);
-			InitSystems(systems);
+			InitWorld();
+			InitSystems(simulationSystems);
 			SetEntityManagerReferences();
 			ClearSystemIds();
 			EnableJobsDebugger();
@@ -104,16 +103,21 @@ namespace CodeSmile.TestFixtures
 			if (systems == null)
 				return;
 
-			foreach (var system in systems)
-				m_World.GetOrCreateSystem(system);
+			var simGroup = World.GetExistingSystemManaged<SimulationSystemGroup>();
+			foreach (var systemType in systems)
+			{
+				if (systemType == null)
+					continue;
+
+				var systemHandle = m_World.GetOrCreateSystem(systemType);
+				simGroup.AddSystemToUpdateList(systemHandle);
+			}
 		}
 
-		private void InitWorld(Boolean emptyWorld)
+		private void InitWorld()
 		{
 			m_PreviousWorld = World.DefaultGameObjectInjectionWorld;
-			m_World = World.DefaultGameObjectInjectionWorld = emptyWorld
-				? new World("Test World: Empty")
-				: DefaultWorldInitialization.Initialize("Test World: Default");
+			m_World = World.DefaultGameObjectInjectionWorld = DefaultWorldInitialization.Initialize("TEST: Default World");
 			m_World.UpdateAllocatorEnableBlockFree = true;
 		}
 
@@ -173,6 +177,12 @@ namespace CodeSmile.TestFixtures
 				ecb.CreateEntity(archetype);
 
 			ecb.Playback(EM);
+		}
+
+		protected void SetEntitiesComponentData<T>(T component)where T : unmanaged, IComponentData
+		{
+			foreach (var entity in EM.GetAllEntities())
+				EM.SetComponentData(entity, component);
 		}
 	}
 }
