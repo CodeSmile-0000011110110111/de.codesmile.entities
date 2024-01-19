@@ -10,7 +10,6 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.PerformanceTesting;
-using UnityEngine;
 
 namespace CodeSmile.Tests
 {
@@ -21,7 +20,8 @@ namespace CodeSmile.Tests
 		[TestCase(100), TestCase(1000), TestCase(10000), TestCase(100000), TestCase(1000000), Performance]
 		public void Measure_ReadWriteComponentData_SystemBase(Int32 entitiesCount)
 		{
-			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteSystemBaseSystem), typeof(ComponentReadWriteSystemBaseSystem.TagComponent));
+			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteSystemBaseSystem),
+				typeof(ComponentReadWriteSystemBaseSystem.TagComponent));
 			MeasureWorldUpdate();
 			AssertReadWriteComponentTest();
 		}
@@ -29,7 +29,8 @@ namespace CodeSmile.Tests
 		[TestCase(100), TestCase(1000), TestCase(10000), TestCase(100000), TestCase(1000000), Performance]
 		public void Measure_ReadWriteComponentData_Job(Int32 entitiesCount)
 		{
-			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteJobSystem), typeof(ComponentReadWriteJobSystem.TagComponent));
+			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteJobSystem),
+				typeof(ComponentReadWriteJobSystem.TagComponent));
 			MeasureWorldUpdate();
 			AssertReadWriteComponentTest();
 		}
@@ -37,7 +38,8 @@ namespace CodeSmile.Tests
 		[TestCase(100), TestCase(1000), TestCase(10000), TestCase(100000), TestCase(1000000), Performance]
 		public void Measure_ReadWriteComponentData_BurstedJob(Int32 entitiesCount)
 		{
-			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteBurstedJobSystem), typeof(ComponentReadWriteBurstedJobSystem.TagComponent));
+			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteBurstedJobSystem),
+				typeof(ComponentReadWriteBurstedJobSystem.TagComponent));
 			MeasureWorldUpdate();
 			AssertReadWriteComponentTest();
 		}
@@ -45,7 +47,8 @@ namespace CodeSmile.Tests
 		[TestCase(100), TestCase(1000), TestCase(10000), TestCase(100000), TestCase(1000000), Performance]
 		public void Measure_ReadWriteComponentData_ParallelJob(Int32 entitiesCount)
 		{
-			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteParallelJobSystem), typeof(ComponentReadWriteParallelJobSystem.TagComponent));
+			CreateReadWriteComponentTestEntities(entitiesCount, typeof(ComponentReadWriteParallelJobSystem),
+				typeof(ComponentReadWriteParallelJobSystem.TagComponent));
 			MeasureWorldUpdate();
 			AssertReadWriteComponentTest();
 		}
@@ -98,7 +101,7 @@ namespace CodeSmile.Tests
 			CreateWorld(system);
 			components = components.Append(typeof(IntComponent)).Append(typeof(Int4x4Component)).ToArray();
 			CreateEntitiesWithComponents(entitiesCount, components.ToArray());
-			SetEntitiesComponentData(new IntComponent { Value = TestValue });
+			SetEntitiesComponentData(entity => new IntComponent { Value = TestValue });
 		}
 
 		private void AssertReadWriteComponentTest()
@@ -210,13 +213,13 @@ namespace CodeSmile.Tests
 	[BurstCompile(CompileSynchronously = true), DisableAutoCreation]
 	internal partial struct ComponentReadWriteBurstedParallelCallFuncJobSystem : ISystem
 	{
-		public struct TagComponent : IComponentData {}
-
 		[BurstCompile(CompileSynchronously = true)]
 		public void OnCreate(ref SystemState state) => state.RequireForUpdate<TagComponent>();
 
 		[BurstCompile(CompileSynchronously = true)]
 		public void OnUpdate(ref SystemState state) => new ComponentReadWriteBurstedCallFuncJob().ScheduleParallel();
+
+		public struct TagComponent : IComponentData {}
 	}
 
 	[DisableAutoCreation]

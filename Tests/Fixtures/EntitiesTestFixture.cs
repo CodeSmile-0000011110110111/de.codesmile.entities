@@ -177,12 +177,31 @@ namespace CodeSmile.TestFixtures
 				ecb.CreateEntity(archetype);
 
 			ecb.Playback(EM);
+			ecb.Dispose();
 		}
 
-		protected void SetEntitiesComponentData<T>(T component)where T : unmanaged, IComponentData
+		protected void SetEntitiesComponentData<T>(Func<Entity, T> getDataFunc) where T : unmanaged, IComponentData
+		{
+			if (getDataFunc == null)
+				return;
+
+			foreach (var entity in EM.GetAllEntities())
+			{
+				if (EM.HasComponent<T>(entity))
+				{
+					var data = getDataFunc.Invoke(entity);
+					EM.SetComponentData(entity, data);
+				}
+			}
+		}
+
+		protected void ForEachComponentData<T>(Action<Entity, T> forEachAction) where T : unmanaged, IComponentData
 		{
 			foreach (var entity in EM.GetAllEntities())
-				EM.SetComponentData(entity, component);
+			{
+				if (EM.HasComponent<T>(entity))
+					forEachAction.Invoke(entity, EM.GetComponentData<T>(entity));
+			}
 		}
 	}
 }

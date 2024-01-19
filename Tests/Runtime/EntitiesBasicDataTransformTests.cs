@@ -6,33 +6,32 @@ using NUnit.Framework;
 using System;
 using Unity.Burst;
 using Unity.Entities;
-using UnityEngine;
 
 namespace CodeSmile.Tests
 {
 	public partial class EntitiesBasicDataTransformTests : EntitiesTestFixture
 	{
-		[Test] public void TestSimpleDataTransform()
+		[Test] public void TestData_ParallelUpdate_WritesEachComponentOnce()
 		{
-			CreateTestDataComponentEntities(1000, typeof(TestData));
+			CreateTestDataComponentEntities(32 * 128, typeof(TestDataTransformSystem), typeof(TestData));
 			World.Update();
 
-			//World.GetExistingSystem<TestDataTransformSystem>()
-			Debug.Log(LogSystemsToString());
+			ForEachComponentData<TestData>((entity, actual) =>
+				Assert.AreEqual(new TestData { Owner = entity, UpdateCount = 1 }, actual));
 		}
 
-		private void CreateTestDataComponentEntities(Int32 entitiesCount, params ComponentType[] testComponents)
+		private void CreateTestDataComponentEntities(Int32 entitiesCount, Type system, params ComponentType[] testComponents)
 		{
-			CreateWorld();
+			CreateWorld(system);
 			CreateEntitiesWithComponents(entitiesCount, testComponents);
-			SetEntitiesComponentData(new TestData(){});
+			//SetEntitiesComponentData(entity => new TestData());
 		}
 
 		public struct TestData : IComponentData
 		{
-			public Boolean DidUpdate;
-			public Entity OwningEntity;
-			public Int32 ChunkIndexInQuery;
+			public Entity Owner;
+			public Int32 UpdateCount;
+			public override String ToString() => $"{nameof(TestData)}(Owner={Owner}, UpdateCount={UpdateCount})";
 		}
 
 		[BurstCompile, DisableAutoCreation]
@@ -40,15 +39,14 @@ namespace CodeSmile.Tests
 		{
 			[BurstCompile] public void OnCreate(ref SystemState state) => state.RequireForUpdate<TestData>();
 			[BurstCompile] public void OnUpdate(ref SystemState state) => new TestDataTransformJob().ScheduleParallel();
-		}
 
-		[BurstCompile] public partial struct TestDataTransformJob : IJobEntity
-		{
-			private void Execute([ChunkIndexInQuery] Int32 chunkIndex, ref TestData testData, in Entity entity)
+			[BurstCompile] public partial struct TestDataTransformJob : IJobEntity
 			{
-				testData.DidUpdate = true;
-				testData.OwningEntity = entity;
-				testData.ChunkIndexInQuery = chunkIndex;
+				private void Execute(ref TestData testData, in Entity entity)
+				{
+					testData.Owner = entity;
+					testData.UpdateCount++;
+				}
 			}
 		}
 	}
